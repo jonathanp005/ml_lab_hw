@@ -264,7 +264,7 @@ def main() -> None:
         print(f"weights: {w_pla}")
         print(f"train accuracy: {train_acc_pla:.3f}")
         print(f"test accuracy:  {test_acc_pla:.3f}")
-        if pla_plot_path is not None:
+        if pla_plot_path is not None and pla_plot_path.exists():
             print(f"saved plot:    {pla_plot_path}")
     else:
         print(f"Skipped: {args.pla_path} not found.")
@@ -288,7 +288,7 @@ def main() -> None:
         print(f"weights: {w_base}")
         print(f"train accuracy: {train_base:.3f}")
         print(f"test accuracy:  {test_base:.3f}")
-        if pocket_plot_path is not None:
+        if pocket_plot_path is not None and pocket_plot_path.exists():
             print(f"saved plot:    {pocket_plot_path}")
 
         w_mod, train_mod, test_mod = run_dataset(

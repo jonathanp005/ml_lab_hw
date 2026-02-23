@@ -197,6 +197,36 @@ def run_dataset(
     return w, train_acc, test_acc
 
 
+def save_before_after_plot(
+    x: np.ndarray,
+    y: np.ndarray,
+    w_before: np.ndarray,
+    w_after: np.ndarray,
+    save_path: Path,
+    before_title: str,
+    after_title: str,
+) -> None:
+    """Save a side-by-side comparison plot of baseline vs modified separators."""
+    if x.shape[1] != 2:
+        print("Skipping comparison plot: visualise() supports only 2D inputs.")
+        return
+    try:
+        plt_mod, visualise_fn = load_plot_tools()
+    except RuntimeError as exc:
+        print(exc)
+        return
+
+    fig, axes = plt_mod.subplots(1, 2, figsize=(11, 4.5))
+    visualise_fn(w_before, x, y, ax=axes[0], title=before_title)
+    visualise_fn(w_after, x, y, ax=axes[1], title=after_title)
+    fig.suptitle("Pocket PLA comparison: before vs after modification")
+
+    save_path = Path(save_path)
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(save_path, dpi=160, bbox_inches="tight")
+    plt_mod.close(fig)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Simple PLA and pocket PLA runner.")
     parser.add_argument(
@@ -308,6 +338,20 @@ def main() -> None:
             print("Result: the small modification performed better (or equal) on test.")
         else:
             print("Result: the baseline performed better on this run.")
+
+        comparison_plot_path = args.plot_dir / "pocket_before_after.png"
+        pocket_data = load_npz_dataset(args.pocket_path)
+        save_before_after_plot(
+            x=np.asarray(pocket_data["X"], dtype=float),
+            y=to_labels(pocket_data["Y"]),
+            w_before=w_base,
+            w_after=w_mod,
+            save_path=comparison_plot_path,
+            before_title=f"Before (baseline), test acc={test_base:.3f}",
+            after_title=f"After (random update), test acc={test_mod:.3f}",
+        )
+        if comparison_plot_path.exists():
+            print(f"saved comparison plot: {comparison_plot_path}")
     else:
         print(f"Skipped: {args.pocket_path} not found.")
 

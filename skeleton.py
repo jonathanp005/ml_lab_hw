@@ -48,6 +48,12 @@ def load_plot_tools():
     return plt, visualise
 
 
+def is_noninteractive_backend(plt_mod) -> bool:
+    """Return True when the active Matplotlib backend cannot show GUI windows."""
+    backend = str(plt_mod.get_backend()).lower()
+    return backend == "agg" or backend.endswith("backend_agg")
+
+
 def pla(
     data: dict[str, np.ndarray],
     plot_every: Optional[int] = 1,
@@ -280,7 +286,13 @@ def main() -> None:
     if args.plot_every > 0:
         try:
             plt_mod, _ = load_plot_tools()
-            plt_mod.show()
+            if is_noninteractive_backend(plt_mod):
+                print(
+                    "Skipping plt.show(): non-interactive Matplotlib backend "
+                    f"'{plt_mod.get_backend()}'."
+                )
+            else:
+                plt_mod.show()
         except RuntimeError as exc:
             print(exc)
 

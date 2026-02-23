@@ -189,13 +189,13 @@ def main() -> None:
     parser.add_argument(
         "--pla-path",
         type=Path,
-        default=Path("pla.npz"),
+        default=Path("data/pla.npz"),
         help="Path to pla.npz dataset.",
     )
     parser.add_argument(
         "--pocket-path",
         type=Path,
-        default=Path("pocket.npz"),
+        default=Path("data/pocket.npz"),
         help="Path to pocket.npz dataset.",
     )
     parser.add_argument(

@@ -4,7 +4,9 @@ import argparse
 from pathlib import Path
 from typing import Optional
 
+import matplotlib.pyplot as plt
 import numpy as np
+from visualise import visualise
 
 
 def to_labels(y: np.ndarray) -> np.ndarray:
@@ -33,25 +35,6 @@ def accuracy(w: np.ndarray, x_with_bias: np.ndarray, y: np.ndarray) -> float:
 def evaluate_on_split(w: np.ndarray, x: np.ndarray, y: np.ndarray) -> float:
     """Evaluate a weight vector on arbitrary split data."""
     return accuracy(w, add_bias(x), to_labels(y))
-
-
-def load_plot_tools():
-    """Import plotting dependencies only when they are needed."""
-    try:
-        import matplotlib.pyplot as plt
-        from visualise import visualise
-    except ModuleNotFoundError as exc:
-        raise RuntimeError(
-            "Matplotlib is not installed, so plotting features are disabled. "
-            "Install matplotlib to save/show plots."
-        ) from exc
-    return plt, visualise
-
-
-def is_noninteractive_backend(plt_mod) -> bool:
-    """Return True when the active Matplotlib backend cannot show GUI windows."""
-    backend = str(plt_mod.get_backend()).lower()
-    return backend == "agg" or backend.endswith("backend_agg")
 
 
 def pla(
@@ -94,14 +77,7 @@ def pla(
 
     fig, ax = None, None
     plot_enabled = bool(plot_every) and x.shape[1] == 2
-    plt_mod, visualise_fn = (None, None)
-    if plot_enabled:
-        try:
-            plt_mod, visualise_fn = load_plot_tools()
-        except RuntimeError as exc:
-            print(exc)
-            plot_enabled = False
-    elif plot_every and x.shape[1] != 2:
+    if bool(plot_every) and x.shape[1] != 2:
         print("Skipping plots: visualise() supports only 2D inputs.")
 
     history: list[float] = []
@@ -117,14 +93,14 @@ def pla(
         if plot_enabled and iteration % plot_every == 0:
             if ax is not None:
                 ax.clear()
-            fig, ax, _ = visualise_fn(
+            fig, ax, _ = visualise(
                 w_for_plot,
                 x,
                 y,
                 ax=ax,
                 title=f"iter={iteration}, train acc={current_acc:.3f}",
             )
-            plt_mod.pause(pause)
+            plt.pause(pause)
 
         if misclassified.size == 0:
             break
@@ -147,14 +123,14 @@ def pla(
     if plot_enabled:
         if ax is not None:
             ax.clear()
-        fig, ax, _ = visualise_fn(
+        fig, ax, _ = visualise(
             final_w,
             x,
             y,
             ax=ax,
             title=f"final, train acc={final_acc:.3f}",
         )
-        plt_mod.pause(pause)
+        plt.pause(pause)
         if save_plot_path is not None:
             save_plot_path = Path(save_plot_path)
             save_plot_path.parent.mkdir(parents=True, exist_ok=True)
@@ -210,21 +186,16 @@ def save_before_after_plot(
     if x.shape[1] != 2:
         print("Skipping comparison plot: visualise() supports only 2D inputs.")
         return
-    try:
-        plt_mod, visualise_fn = load_plot_tools()
-    except RuntimeError as exc:
-        print(exc)
-        return
 
-    fig, axes = plt_mod.subplots(1, 2, figsize=(11, 4.5))
-    visualise_fn(w_before, x, y, ax=axes[0], title=before_title)
-    visualise_fn(w_after, x, y, ax=axes[1], title=after_title)
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
+    visualise(w_before, x, y, ax=axes[0], title=before_title)
+    visualise(w_after, x, y, ax=axes[1], title=after_title)
     fig.suptitle("Pocket PLA comparison: before vs after modification")
 
     save_path = Path(save_path)
     save_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(save_path, dpi=160, bbox_inches="tight")
-    plt_mod.close(fig)
+    plt.close(fig)
 
 
 def main() -> None:
@@ -356,17 +327,7 @@ def main() -> None:
         print(f"Skipped: {args.pocket_path} not found.")
 
     if args.plot_every > 0 and args.show:
-        try:
-            plt_mod, _ = load_plot_tools()
-            if is_noninteractive_backend(plt_mod):
-                print(
-                    "Skipping plt.show(): non-interactive Matplotlib backend "
-                    f"'{plt_mod.get_backend()}'."
-                )
-            else:
-                plt_mod.show()
-        except RuntimeError as exc:
-            print(exc)
+        plt.show()
 
 
 if __name__ == "__main__":

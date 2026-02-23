@@ -89,7 +89,11 @@ def pla(
     plot_enabled = bool(plot_every) and x.shape[1] == 2
     plt_mod, visualise_fn = (None, None)
     if plot_enabled:
-        plt_mod, visualise_fn = load_plot_tools()
+        try:
+            plt_mod, visualise_fn = load_plot_tools()
+        except RuntimeError as exc:
+            print(exc)
+            plot_enabled = False
     elif plot_every and x.shape[1] != 2:
         print("Skipping plots: visualise() supports only 2D inputs.")
 

@@ -42,8 +42,8 @@ def load_plot_tools():
         from visualise import visualise
     except ModuleNotFoundError as exc:
         raise RuntimeError(
-            "Plotting was requested, but matplotlib is not installed. "
-            "Install matplotlib or run with --plot-every 0."
+            "Matplotlib is not installed, so plotting features are disabled. "
+            "Install matplotlib to save/show plots."
         ) from exc
     return plt, visualise
 

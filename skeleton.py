@@ -62,6 +62,7 @@ def pla(
     random_update: bool = False,
     pause: float = 0.5,
     seed: int = 0,
+    save_plot_path: Optional[Path] = None,
 ) -> tuple[np.ndarray, float] | tuple[np.ndarray, float, list[float]]:
     """
     Train a perceptron (or pocket perceptron if use_pocket=True).
@@ -154,6 +155,10 @@ def pla(
             title=f"final, train acc={final_acc:.3f}",
         )
         plt_mod.pause(pause)
+        if save_plot_path is not None:
+            save_plot_path = Path(save_plot_path)
+            save_plot_path.parent.mkdir(parents=True, exist_ok=True)
+            fig.savefig(save_plot_path, dpi=160, bbox_inches="tight")
 
     if plot_every:
         return final_w, final_acc, history
@@ -174,6 +179,7 @@ def run_dataset(
     seed: int,
     use_pocket: bool,
     random_update: bool,
+    save_plot_path: Optional[Path] = None,
 ) -> tuple[np.ndarray, float, float]:
     data = load_npz_dataset(dataset_path)
     result = pla(
@@ -184,6 +190,7 @@ def run_dataset(
         random_update=random_update,
         pause=pause,
         seed=seed,
+        save_plot_path=save_plot_path,
     )
     w, train_acc = result[:2]
     test_acc = evaluate_on_split(w, data["X_test"], data["Y_test"])
@@ -228,9 +235,21 @@ def main() -> None:
         default=0,
         help="Random seed for random updates.",
     )
+    parser.add_argument(
+        "--plot-dir",
+        type=Path,
+        default=Path("plots"),
+        help="Directory where plot images are saved.",
+    )
+    parser.add_argument(
+        "--show",
+        action="store_true",
+        help="Show plots interactively (if backend supports GUI windows).",
+    )
     args = parser.parse_args()
 
     print("=== PLA on pla.npz ===")
+    pla_plot_path = args.plot_dir / "pla_training.png" if args.plot_every > 0 else None
     if args.pla_path.exists():
         w_pla, train_acc_pla, test_acc_pla = run_dataset(
             dataset_path=args.pla_path,
@@ -240,14 +259,20 @@ def main() -> None:
             seed=args.seed,
             use_pocket=False,
             random_update=False,
+            save_plot_path=pla_plot_path,
         )
         print(f"weights: {w_pla}")
         print(f"train accuracy: {train_acc_pla:.3f}")
         print(f"test accuracy:  {test_acc_pla:.3f}")
+        if pla_plot_path is not None:
+            print(f"saved plot:    {pla_plot_path}")
     else:
         print(f"Skipped: {args.pla_path} not found.")
 
     print("\n=== Pocket PLA on pocket.npz ===")
+    pocket_plot_path = (
+        args.plot_dir / "pocket_training.png" if args.plot_every > 0 else None
+    )
     if args.pocket_path.exists():
         w_base, train_base, test_base = run_dataset(
             dataset_path=args.pocket_path,
@@ -257,11 +282,14 @@ def main() -> None:
             seed=args.seed,
             use_pocket=True,
             random_update=False,
+            save_plot_path=pocket_plot_path,
         )
         print("Baseline pocket (first misclassified sample):")
         print(f"weights: {w_base}")
         print(f"train accuracy: {train_base:.3f}")
         print(f"test accuracy:  {test_base:.3f}")
+        if pocket_plot_path is not None:
+            print(f"saved plot:    {pocket_plot_path}")
 
         w_mod, train_mod, test_mod = run_dataset(
             dataset_path=args.pocket_path,
@@ -283,7 +311,7 @@ def main() -> None:
     else:
         print(f"Skipped: {args.pocket_path} not found.")
 
-    if args.plot_every > 0:
+    if args.plot_every > 0 and args.show:
         try:
             plt_mod, _ = load_plot_tools()
             if is_noninteractive_backend(plt_mod):

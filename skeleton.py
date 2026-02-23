@@ -4,10 +4,7 @@ import argparse
 from pathlib import Path
 from typing import Optional
 
-import matplotlib.pyplot as plt
 import numpy as np
-
-from visualise import visualise
 
 
 def to_labels(y: np.ndarray) -> np.ndarray:
@@ -36,6 +33,19 @@ def accuracy(w: np.ndarray, x_with_bias: np.ndarray, y: np.ndarray) -> float:
 def evaluate_on_split(w: np.ndarray, x: np.ndarray, y: np.ndarray) -> float:
     """Evaluate a weight vector on arbitrary split data."""
     return accuracy(w, add_bias(x), to_labels(y))
+
+
+def load_plot_tools():
+    """Import plotting dependencies only when they are needed."""
+    try:
+        import matplotlib.pyplot as plt
+        from visualise import visualise
+    except ModuleNotFoundError as exc:
+        raise RuntimeError(
+            "Plotting was requested, but matplotlib is not installed. "
+            "Install matplotlib or run with --plot-every 0."
+        ) from exc
+    return plt, visualise
 
 
 def pla(
@@ -76,6 +86,13 @@ def pla(
     best_acc = accuracy(best_w, x_with_bias, y)
 
     fig, ax = None, None
+    plot_enabled = bool(plot_every) and x.shape[1] == 2
+    plt_mod, visualise_fn = (None, None)
+    if plot_enabled:
+        plt_mod, visualise_fn = load_plot_tools()
+    elif plot_every and x.shape[1] != 2:
+        print("Skipping plots: visualise() supports only 2D inputs.")
+
     history: list[float] = []
     rng = np.random.default_rng(seed)
 
@@ -86,17 +103,17 @@ def pla(
         history.append(current_acc)
 
         w_for_plot = best_w if use_pocket else w
-        if plot_every and x.shape[1] == 2 and iteration % plot_every == 0:
+        if plot_enabled and iteration % plot_every == 0:
             if ax is not None:
                 ax.clear()
-            fig, ax, _ = visualise(
+            fig, ax, _ = visualise_fn(
                 w_for_plot,
                 x,
                 y,
                 ax=ax,
                 title=f"iter={iteration}, train acc={current_acc:.3f}",
             )
-            plt.pause(pause)
+            plt_mod.pause(pause)
 
         if misclassified.size == 0:
             break
@@ -116,17 +133,17 @@ def pla(
     final_w = best_w if use_pocket else w
     final_acc = accuracy(final_w, x_with_bias, y)
 
-    if plot_every and x.shape[1] == 2:
+    if plot_enabled:
         if ax is not None:
             ax.clear()
-        fig, ax, _ = visualise(
+        fig, ax, _ = visualise_fn(
             final_w,
             x,
             y,
             ax=ax,
             title=f"final, train acc={final_acc:.3f}",
         )
-        plt.pause(pause)
+        plt_mod.pause(pause)
 
     if plot_every:
         return final_w, final_acc, history
@@ -257,7 +274,11 @@ def main() -> None:
         print(f"Skipped: {args.pocket_path} not found.")
 
     if args.plot_every > 0:
-        plt.show()
+        try:
+            plt_mod, _ = load_plot_tools()
+            plt_mod.show()
+        except RuntimeError as exc:
+            print(exc)
 
 
 if __name__ == "__main__":
